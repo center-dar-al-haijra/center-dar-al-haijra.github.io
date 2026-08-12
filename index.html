@@ -520,7 +520,10 @@ const NAV = {
     ['schedule','🗓️','جدول المدرسين'],
     ['teachers','👨‍🏫','المدرسون'],
     ['students','👨‍🎓','الطلاب'],
+    ['groups','📚','المجموعات'],
     ['payments','💰','المدفوعات'],
+    ['homework','📝','الواجبات'],
+    ['announcements','📢','الإعلانات'],
   ],
   teacher: [
     ['dashboard','📊','الرئيسية'],
@@ -790,6 +793,9 @@ function secretaryBlocked(pageTitle){
 }
 PAGES.secretary.teachers = async ()=>{ if(secretaryBlocked('المدرسون')) return; await PAGES.admin.teachers(); };
 PAGES.secretary.students = async ()=>{ if(secretaryBlocked('الطلاب')) return; await PAGES.admin.students(); };
+PAGES.secretary.groups = async ()=>{ if(secretaryBlocked('المجموعات')) return; await PAGES.admin.groups(); };
+PAGES.secretary.homework = async ()=>{ if(secretaryBlocked('الواجبات')) return; await PAGES.admin.homework(); };
+PAGES.secretary.announcements = async ()=>{ if(secretaryBlocked('الإعلانات')) return; await PAGES.admin.announcements(); };
 
 PAGES.admin.groups = async ()=>{
   const [groupsSnap, teachersSnap, fees] = await Promise.all([
@@ -1158,8 +1164,13 @@ async function saveAttendance(groupId, subject, sessionNumber, total, studentCou
 
 PAGES.teacher.homework = async ()=>{
   const groups = await myGroups();
-  const hwSnap = await db.collection('homework').where('teacherId','==',currentUser.uid).orderBy('createdAt','desc').get();
-  const rowsArr = await Promise.all(hwSnap.docs.map(async d=>{
+  const hwSnap = await db.collection('homework').where('teacherId','==',currentUser.uid).get();
+  const hwDocsSorted = hwSnap.docs.slice().sort((a,b)=>{
+    const ta = a.data().createdAt ? a.data().createdAt.toMillis() : 0;
+    const tb = b.data().createdAt ? b.data().createdAt.toMillis() : 0;
+    return tb - ta;
+  });
+  const rowsArr = await Promise.all(hwDocsSorted.map(async d=>{
     const h = d.data();
     const g = groups.find(x=>x.id===h.groupId);
     const totalStudents = g ? (g.studentIds||[]).length : 0;
@@ -1439,8 +1450,13 @@ async function submitHomework(hwId, subject, title, teacherId){
 /* ---------------- Shared notifications page ---------------- */
 const NOTIF_ICONS = {cancel:'🔴', reschedule:'🔁', payment:'💰', paid:'✅', general:'🔔'};
 async function renderNotificationsPage(){
-  const snap = await db.collection('notifications').where('userId','==',currentUser.uid).orderBy('createdAt','desc').limit(50).get();
-  const rows = snap.docs.map(d=>{
+  const snap = await db.collection('notifications').where('userId','==',currentUser.uid).get();
+  const sortedDocs = snap.docs.slice().sort((a,b)=>{
+    const ta = a.data().createdAt ? a.data().createdAt.toMillis() : 0;
+    const tb = b.data().createdAt ? b.data().createdAt.toMillis() : 0;
+    return tb - ta;
+  }).slice(0,50);
+  const rows = sortedDocs.map(d=>{
     const n = d.data();
     const ic = NOTIF_ICONS[n.type]||'🔔';
     return `<div style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--border);${n.read?'':'background:rgba(212,175,55,.06);'}">
@@ -1506,7 +1522,7 @@ PAGES.parent.homework = async ()=>{
   const groups = await childGroups();
   const subjects = groups.map(g=>g.subject);
   const snap = await db.collection('homework').orderBy('createdAt','desc').get();
-  const rows = snap.docs.filter(d=>subjects.includes(d.data().subject)).map(d=>{a
+  const rows = snap.docs.filter(d=>subjects.includes(d.data().subject)).map(d=>{
     const h = d.data();
     return `<tr><td>${h.subject}</td><td>${h.title}</td><td>${h.due}</td></tr>`;
   }).join('');
