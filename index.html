@@ -1506,7 +1506,7 @@ PAGES.parent.homework = async ()=>{
   const groups = await childGroups();
   const subjects = groups.map(g=>g.subject);
   const snap = await db.collection('homework').orderBy('createdAt','desc').get();
-  const rows = snap.docs.filter(d=>subjects.includes(d.data().subject)).map(d=>{
+  const rows = snap.docs.filter(d=>subjects.includes(d.data().subject)).map(d=>{a
     const h = d.data();
     return `<tr><td>${h.subject}</td><td>${h.title}</td><td>${h.due}</td></tr>`;
   }).join('');
