@@ -628,6 +628,8 @@ function scheduleTable(groups){
   </div>`;
 }
 
+const PAGES = { admin:{}, secretary:{}, teacher:{}, student:{}, parent:{} };
+
 /* ---------------- Today's schedule (weekday-aware) ---------------- */
 const WEEKDAYS = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'];
 function getTodayWeekday(){
@@ -714,8 +716,6 @@ async function renderPage(){
 /* =========================================================
    ADMIN PAGES
    ========================================================= */
-const PAGES = { admin:{}, secretary:{}, teacher:{}, student:{}, parent:{} };
-
 PAGES.admin.dashboard = async ()=>{
   const [teachersSnap, studentsSnap, groupsSnap] = await Promise.all([
     db.collection('users').where('role','==','teacher').get(),
