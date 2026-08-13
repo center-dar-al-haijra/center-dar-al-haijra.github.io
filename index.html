@@ -774,12 +774,13 @@ PAGES.admin.students = async ()=>{
   const snap = await db.collection('users').where('role','==','student').get();
   const rows = snap.docs.map(d=>{
     const s = d.data();
-    return `<tr><td>${s.name}</td><td>${s.stage||'-'}</td><td>${s.grade||'-'}</td><td>${s.phone||'-'}</td><td>${s.email}</td></tr>`;
+    return `<tr><td>${s.name}</td><td>${s.stage||'-'}</td><td>${s.grade||'-'}</td><td>${s.phone||'-'}</td><td>${s.email}</td>
+      <td><button class="small-btn danger" onclick="deleteStudent('${d.id}','${(s.name||'').replace(/'/g,'')}')">حذف</button></td></tr>`;
   }).join('');
   setMain(`${pageHeader('الطلاب')}
     <div class="panel">
       ${snap.empty? '<div class="empty-state"><div class="ic">👨‍🎓</div>مفيش طلاب مسجلين لسه</div>' :
-      `<table><thead><tr><th>الاسم</th><th>المرحلة</th><th>الصف</th><th>الهاتف</th><th>الإيميل</th></tr></thead><tbody>${rows}</tbody></table>`}
+      `<table><thead><tr><th>الاسم</th><th>المرحلة</th><th>الصف</th><th>الهاتف</th><th>الإيميل</th><th></th></tr></thead><tbody>${rows}</tbody></table>`}
     </div>`);
 };
 
@@ -790,6 +791,22 @@ function secretaryBlocked(pageTitle){
     return true;
   }
   return false;
+}
+async function deleteStudent(uid, name){
+  if(!confirm(`متأكدة إنك عايزة تحذفي الطالب "${name}"؟ هيتشال من كل المجموعات والبيانات المرتبطة بيه، والإجراء ده مينفعش يترجع.`)) return;
+  const groupsSnap = await db.collection('groups').where('studentIds','array-contains',uid).get();
+  await Promise.all(groupsSnap.docs.map(d=>{
+    const g = d.data();
+    const paid = {...(g.paidStudents||{})};
+    delete paid[uid];
+    return db.collection('groups').doc(d.id).update({
+      studentIds: firebase.firestore.FieldValue.arrayRemove(uid),
+      paidStudents: paid
+    });
+  }));
+  await db.collection('users').doc(uid).delete();
+  toast('تم حذف الطالب');
+  renderPage();
 }
 PAGES.secretary.teachers = async ()=>{ if(secretaryBlocked('المدرسون')) return; await PAGES.admin.teachers(); };
 PAGES.secretary.students = async ()=>{ if(secretaryBlocked('الطلاب')) return; await PAGES.admin.students(); };
